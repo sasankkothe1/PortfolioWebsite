@@ -16,7 +16,7 @@ export default function AdminDashboard() {
   const fetchMedia = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const res = await client.get('/media', { params: { page: p, limit: 20 } });
+      const res = await client.get('/media/feed', { params: { page: p, limit: 20 } });
       setItems(res.data.data);
       setTotalPages(res.data.pagination.totalPages);
       setPage(p);
@@ -27,12 +27,20 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchMedia(1); }, [fetchMedia]);
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this item?')) return;
-    setDeleting(id);
+  const handleDelete = async (item) => {
+    const label = item.type === 'carousel' ? 'carousel and all its images' : 'this item';
+    if (!confirm(`Delete ${label}?`)) return;
+    const key = item.type === 'carousel' ? item.carousel_id : item.id;
+    setDeleting(key);
     try {
-      await client.delete(`/media/${id}`);
-      setItems(prev => prev.filter(i => i.id !== id));
+      if (item.type === 'carousel') {
+        await client.delete(`/carousels/${item.carousel_id}`);
+      } else {
+        await client.delete(`/media/${item.id}`);
+      }
+      setItems(prev => prev.filter(i =>
+        item.type === 'carousel' ? i.carousel_id !== item.carousel_id : i.id !== item.id
+      ));
     } catch {
       alert('Failed to delete');
     } finally {
@@ -71,58 +79,53 @@ export default function AdminDashboard() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {items.map(item => (
-                <div key={item.id} className="relative group bg-surface rounded-lg overflow-hidden">
-                  <img
-                    src={item.thumbnail_url || item.url}
-                    alt={item.title || ''}
-                    className="w-full aspect-square object-cover"
-                  />
-                  {item.type === 'video' && (
-                    <span className="absolute top-2 left-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                      Video
-                    </span>
-                  )}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      disabled={deleting === item.id}
-                      className="bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-red-700 disabled:opacity-50"
-                    >
-                      {deleting === item.id ? '…' : 'Delete'}
-                    </button>
+              {items.map(item => {
+                const key = item.type === 'carousel' ? `carousel-${item.carousel_id}` : `media-${item.id}`;
+                const deleteKey = item.type === 'carousel' ? item.carousel_id : item.id;
+                return (
+                  <div key={key} className="relative group bg-surface rounded-lg overflow-hidden">
+                    <img
+                      src={item.thumbnail_url || item.url}
+                      alt={item.title || ''}
+                      className="w-full aspect-square object-cover"
+                    />
+                    <div className="absolute top-2 left-2 flex gap-1">
+                      {item.type === 'video' && (
+                        <span className="bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">Video</span>
+                      )}
+                      {item.type === 'carousel' && (
+                        <span className="bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">Carousel</span>
+                      )}
+                    </div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => handleDelete(item)}
+                        disabled={deleting === deleteKey}
+                        className="bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                      >
+                        {deleting === deleteKey ? '…' : 'Delete'}
+                      </button>
+                    </div>
+                    {item.title && (
+                      <div className="px-2 py-1.5 border-t border-border">
+                        <p className="text-white/60 text-xs truncate">{item.title}</p>
+                      </div>
+                    )}
+                    {item.category_name && (
+                      <div className="px-2 pb-1.5">
+                        <span className="text-white/30 text-xs">{item.category_name}</span>
+                      </div>
+                    )}
                   </div>
-                  {item.title && (
-                    <div className="px-2 py-1.5 border-t border-border">
-                      <p className="text-white/60 text-xs truncate">{item.title}</p>
-                    </div>
-                  )}
-                  {item.category_name && (
-                    <div className="px-2 pb-1.5">
-                      <span className="text-white/30 text-xs">{item.category_name}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {totalPages > 1 && (
               <div className="flex justify-center gap-3 mt-8">
-                <button
-                  onClick={() => fetchMedia(page - 1)}
-                  disabled={page <= 1}
-                  className="text-sm text-white/50 disabled:opacity-30 hover:text-white"
-                >
-                  ← Prev
-                </button>
+                <button onClick={() => fetchMedia(page - 1)} disabled={page <= 1} className="text-sm text-white/50 disabled:opacity-30 hover:text-white">← Prev</button>
                 <span className="text-white/30 text-sm">{page} / {totalPages}</span>
-                <button
-                  onClick={() => fetchMedia(page + 1)}
-                  disabled={page >= totalPages}
-                  className="text-sm text-white/50 disabled:opacity-30 hover:text-white"
-                >
-                  Next →
-                </button>
+                <button onClick={() => fetchMedia(page + 1)} disabled={page >= totalPages} className="text-sm text-white/50 disabled:opacity-30 hover:text-white">Next →</button>
               </div>
             )}
           </>
