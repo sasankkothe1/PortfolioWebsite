@@ -212,4 +212,27 @@ async function getMediaById(req, res, next) {
   }
 }
 
-module.exports = { listFeed, listMedia, getMediaById, uploadMedia, deleteMedia };
+async function updateMedia(req, res, next) {
+  try {
+    const { title, category_id, tags } = req.body;
+    const tagsArray = tags
+      ? (Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(Boolean))
+      : [];
+
+    const { rows } = await pool.query(
+      `UPDATE media
+       SET title = $1, category_id = $2, tags = $3
+       WHERE id = $4
+       RETURNING *`,
+      [title || null, category_id ? parseInt(category_id) : null, tagsArray, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+
+    broadcast('new_media');
+    res.json({ data: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listFeed, listMedia, getMediaById, uploadMedia, updateMedia, deleteMedia };

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
 import Spinner from '../../components/ui/Spinner';
+import EditModal from '../../components/admin/EditModal';
 
 export default function AdminDashboard() {
   const { logout } = useAuth();
@@ -12,6 +13,7 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deleting, setDeleting] = useState(null);
+  const [editing, setEditing] = useState(null);
 
   const fetchMedia = useCallback(async (p = 1) => {
     setLoading(true);
@@ -97,7 +99,13 @@ export default function AdminDashboard() {
                         <span className="bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">Carousel</span>
                       )}
                     </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => setEditing(item)}
+                        className="bg-white/20 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-white/30"
+                      >
+                        Edit
+                      </button>
                       <button
                         onClick={() => handleDelete(item)}
                         disabled={deleting === deleteKey}
@@ -131,6 +139,14 @@ export default function AdminDashboard() {
           </>
         )}
       </div>
+
+      {editing && (
+        <EditModal
+          item={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => fetchMedia(page)}
+        />
+      )}
     </div>
   );
 }
