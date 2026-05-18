@@ -33,5 +33,23 @@ process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection:', reason);
 });
 
+async function seedAdminIfNeeded() {
+  const pool = require('./db/pool');
+  const bcrypt = require('bcrypt');
+  const { rows } = await pool.query('SELECT 1 FROM users LIMIT 1');
+  if (rows.length > 0) return; // admin already exists
+  const { ADMIN_USERNAME, ADMIN_PASSWORD } = process.env;
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) return;
+  const hash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  await pool.query(
+    'INSERT INTO users (username, password_hash) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+    [ADMIN_USERNAME, hash]
+  );
+  console.log(`Admin user "${ADMIN_USERNAME}" created automatically.`);
+}
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Backend running on port ${PORT}`);
+  await seedAdminIfNeeded().catch(err => console.error('Admin seed error:', err));
+});
