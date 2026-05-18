@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import imageCompression from 'browser-image-compression';
 import client from '../../api/client';
 import Spinner from '../../components/ui/Spinner';
+
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 8,
+  maxWidthOrHeight: 4096,
+  useWebWorker: true,
+  onProgress: () => {},
+};
 
 export default function UploadPage() {
   const navigate = useNavigate();
@@ -24,12 +32,27 @@ export default function UploadPage() {
     client.get('/categories').then(res => setCategories(res.data.data || []));
   }, []);
 
-  const selectFile = (f) => {
+  const selectFile = async (f) => {
     if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
     setSuccess(false);
     setError('');
+
+    const isImage = f.type.startsWith('image/');
+    if (isImage && f.size > 8 * 1024 * 1024) {
+      setError('Compressing image…');
+      try {
+        const compressed = await imageCompression(f, COMPRESSION_OPTIONS);
+        setFile(compressed);
+        setPreview(URL.createObjectURL(compressed));
+      } catch {
+        setFile(f);
+        setPreview(URL.createObjectURL(f));
+      }
+      setError('');
+    } else {
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
+    }
   };
 
   const onDrop = (e) => {
