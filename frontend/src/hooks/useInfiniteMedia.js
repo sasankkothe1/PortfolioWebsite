@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import client from '../api/client';
+import client, { API_BASE } from '../api/client';
 
 export function useInfiniteMedia(params = {}, endpoint = '/media/feed') {
   const [items, setItems] = useState([]);
@@ -28,7 +28,7 @@ export function useInfiniteMedia(params = {}, endpoint = '/media/feed') {
   // Items are replaced only once fresh data actually arrives (below),
   // so the gallery never goes blank between the event and the response.
   useEffect(() => {
-    const es = new EventSource('/api/events');
+    const es = new EventSource(`${API_BASE}/events`);
     es.addEventListener('new_media', () => {
       setPage(1);
       setRefreshKey(k => k + 1);
