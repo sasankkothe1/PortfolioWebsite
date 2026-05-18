@@ -4,7 +4,9 @@
       "Bash(npm install *)",
       "Bash(docker info *)",
       "Bash(colima version *)",
-      "Bash(brew list *)"
+      "Bash(brew list *)",
+      "Bash(cat ~/.docker/config.json)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }
