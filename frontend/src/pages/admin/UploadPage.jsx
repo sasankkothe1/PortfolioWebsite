@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import imageCompression from 'browser-image-compression';
 import client from '../../api/client';
 import Spinner from '../../components/ui/Spinner';
+import TagInput from '../../components/admin/TagInput';
 
 const COMPRESSION_OPTIONS = {
   maxSizeMB: 8,
@@ -33,7 +34,7 @@ export default function UploadPage() {
   // shared state
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState([]);
   const [categories, setCategories] = useState([]);
   const [newCatName, setNewCatName] = useState('');
   const [showNewCat, setShowNewCat] = useState(false);
@@ -55,7 +56,7 @@ export default function UploadPage() {
     setCarouselFiles([]);
     setCoverIndex(0);
     setTitle('');
-    setTags('');
+    setTags([]);
     setCategoryId('');
     setProgress(0);
     setError('');
@@ -131,7 +132,7 @@ export default function UploadPage() {
     fd.append('file', file);
     if (title) fd.append('title', title);
     if (categoryId) fd.append('category_id', categoryId);
-    if (tags) fd.append('tags', tags);
+    tags.forEach(t => fd.append('tags', t));
 
     await client.post('/media', fd, {
       onUploadProgress: e => { if (e.total) setProgress(Math.round((e.loaded / e.total) * 100)); },
@@ -144,7 +145,7 @@ export default function UploadPage() {
     carouselFiles.forEach(({ file: f }) => fd.append('files', f));
     if (title) fd.append('title', title);
     if (categoryId) fd.append('category_id', categoryId);
-    if (tags) fd.append('tags', tags);
+    tags.forEach(t => fd.append('tags', t));
     fd.append('cover_index', coverIndex);
 
     await client.post('/carousels', fd, {
@@ -312,16 +313,7 @@ export default function UploadPage() {
             )}
           </div>
 
-          <div>
-            <input
-              type="text"
-              placeholder="Tags (comma separated: paris, sunset, travel)"
-              value={tags}
-              onChange={e => setTags(e.target.value)}
-              className="w-full bg-surface border border-border rounded-lg px-4 py-3 text-white placeholder-white/30 outline-none focus:border-white/40 text-sm"
-            />
-            <p className="text-white/30 text-xs mt-1">Tags are invisible to visitors but power the search.</p>
-          </div>
+          <TagInput value={tags} onChange={setTags} />
 
           {uploading && (
             <div className="w-full bg-surface rounded-full h-1.5 overflow-hidden">

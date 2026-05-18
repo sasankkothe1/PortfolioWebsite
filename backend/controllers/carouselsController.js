@@ -116,4 +116,33 @@ async function deleteCarousel(req, res, next) {
   }
 }
 
-module.exports = { getCarousel, createCarousel, deleteCarousel };
+async function updateCarousel(req, res, next) {
+  try {
+    const { title, category_id, tags } = req.body;
+    const tagsArray = tags
+      ? (Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(Boolean))
+      : [];
+
+    const { rows } = await pool.query(
+      `UPDATE carousels
+       SET title = $1, category_id = $2, tags = $3
+       WHERE id = $4
+       RETURNING *`,
+      [title || null, category_id ? parseInt(category_id) : null, tagsArray, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+
+    // Keep carousel images in sync with the new metadata.
+    await pool.query(
+      `UPDATE media SET title = $1, category_id = $2, tags = $3 WHERE carousel_id = $4`,
+      [title || null, category_id ? parseInt(category_id) : null, tagsArray, req.params.id]
+    );
+
+    broadcast('new_media');
+    res.json({ data: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getCarousel, createCarousel, updateCarousel, deleteCarousel };
