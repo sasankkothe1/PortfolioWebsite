@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import client from '../api/client';
 
-export function useInfiniteMedia(params = {}) {
+export function useInfiniteMedia(params = {}, endpoint = '/media/feed') {
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -24,7 +24,7 @@ export function useInfiniteMedia(params = {}) {
     setLoading(true);
     setError(null);
 
-    client.get('/media', { params: { ...params, page, limit: 20 } })
+    client.get(endpoint, { params: { ...params, page, limit: 20 } })
       .then(res => {
         if (cancelled) return;
         const { data, pagination } = res.data;

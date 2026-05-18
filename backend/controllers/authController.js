@@ -40,7 +40,9 @@ async function login(req, res, next) {
 }
 
 async function logout(req, res) {
-  res.clearCookie('token', cookieOptions());
+  const opts = cookieOptions();
+  delete opts.maxAge;
+  res.clearCookie('token', opts);
   res.json({ message: 'Logged out' });
 }
 
