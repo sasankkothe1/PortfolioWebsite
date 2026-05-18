@@ -1,5 +1,6 @@
 const pool = require('../db/pool');
 const cloudinary = require('../lib/cloudinary');
+const { broadcast } = require('../lib/sseClients');
 
 function uploadToCloudinary(buffer, options) {
   return new Promise((resolve, reject) => {
@@ -87,6 +88,7 @@ async function createCarousel(req, res, next) {
       [coverMediaId, carousel.id]
     );
 
+    broadcast('new_media');
     res.status(201).json({ data: { ...carousel, cover_media_id: coverMediaId, images: mediaRows } });
   } catch (err) {
     next(err);
@@ -107,6 +109,7 @@ async function deleteCarousel(req, res, next) {
     );
 
     await pool.query('DELETE FROM carousels WHERE id = $1', [id]);
+    broadcast('new_media');
     res.status(204).send();
   } catch (err) {
     next(err);
