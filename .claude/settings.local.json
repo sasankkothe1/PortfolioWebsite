@@ -6,7 +6,18 @@
       "Bash(colima version *)",
       "Bash(brew list *)",
       "Bash(cat ~/.docker/config.json)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -N http://localhost:3001/api/events)",
+      "Bash(docker-compose -f /Users/sasank/Desktop/coding/portfolio/docker-compose.yml logs backend)",
+      "Bash(docker-compose -f /Users/sasank/Desktop/coding/portfolio/docker-compose.yml logs backend --tail 5)",
+      "Bash(curl -v http://localhost:3001/api/events/test)",
+      "Bash(docker-compose -f /Users/sasank/Desktop/coding/portfolio/docker-compose.yml exec -T backend touch server.js)",
+      "Bash(docker-compose -f /Users/sasank/Desktop/coding/portfolio/docker-compose.yml logs backend --tail 4)",
+      "Bash(curl -s --max-time 2 http://localhost:3001/api/events)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(curl -s http://localhost:3001/api/events/test)",
+      "Bash(docker-compose up *)",
+      "Bash(docker-compose ps *)"
     ]
   }
 }

@@ -9,6 +9,14 @@ export default defineConfig({
       '/api': {
         target: 'http://backend:3001',
         changeOrigin: true,
+        // SSE requires the proxy to not buffer responses.
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
+              proxyRes.headers['x-accel-buffering'] = 'no';
+            }
+          });
+        },
       },
     },
   },

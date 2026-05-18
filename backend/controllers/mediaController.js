@@ -1,5 +1,6 @@
 const pool = require('../db/pool');
 const cloudinary = require('../lib/cloudinary');
+const { broadcast } = require('../lib/sseClients');
 
 // Bridges Cloudinary's callback-based upload_stream into a Promise so we can
 // use await instead of nested callbacks.
@@ -173,6 +174,7 @@ async function uploadMedia(req, res, next) {
       ]
     );
 
+    broadcast('new_media');
     res.status(201).json({ data: rows[0] });
   } catch (err) {
     next(err);
@@ -187,6 +189,7 @@ async function deleteMedia(req, res, next) {
     const media = rows[0];
     await cloudinary.uploader.destroy(media.cloudinary_id, { resource_type: media.type });
     await pool.query('DELETE FROM media WHERE id = $1', [req.params.id]);
+    broadcast('new_media');
     res.status(204).send();
   } catch (err) {
     next(err);
