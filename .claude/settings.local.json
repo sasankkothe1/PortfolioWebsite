@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(docker info *)",
+      "Bash(colima version *)",
+      "Bash(brew list *)"
     ]
   }
 }
