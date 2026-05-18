@@ -11,6 +11,8 @@ A full-stack web application for showcasing photography and videography. There a
 
 The only thing you need installed is **Docker Desktop**. No databases, no Node.js, nothing else.
 
+> **Before running any command:** Open the **Docker Desktop app** on your Mac and wait until the whale icon in the menu bar stops animating. The daemon must be running first.
+
 ### Step 1 — Get your Cloudinary credentials
 
 Cloudinary is where your photos and videos are actually stored. Create a free account at [cloudinary.com](https://cloudinary.com), then go to your **Dashboard**. You'll see three values you need:
@@ -44,7 +46,7 @@ Now open `backend/.env` in a text editor and fill in each line:
 ### Step 3 — Start everything
 
 ```bash
-docker compose up --build
+docker-compose up --build
 ```
 
 This downloads and starts three things: the database, the backend server, and the frontend. The first run takes about 2 minutes. Subsequent runs are faster.
@@ -54,7 +56,7 @@ This downloads and starts three things: the database, the backend server, and th
 In a second terminal window, run:
 
 ```bash
-docker compose exec backend node db/seeds/seed_admin.js
+docker-compose exec backend node db/seeds/seed_admin.js
 ```
 
 This reads `ADMIN_USERNAME` and `ADMIN_PASSWORD` from your `.env` file and creates your login account in the database.
@@ -69,7 +71,7 @@ This reads `ADMIN_USERNAME` and `ADMIN_PASSWORD` from your `.env` file and creat
 ### To stop
 
 ```bash
-docker compose down
+docker-compose down
 ```
 
 Your uploaded photos, videos, and data are preserved between restarts.
