@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/layout/Layout';
 import HomePage from './pages/public/HomePage';
@@ -8,6 +9,7 @@ import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UploadPage from './pages/admin/UploadPage';
 import Spinner from './components/ui/Spinner';
+import SplashScreen from './components/ui/SplashScreen';
 
 function AdminGuard({ children }) {
   const { user } = useAuth();
@@ -22,10 +24,21 @@ function AdminGuard({ children }) {
   return children;
 }
 
+// Only show the splash on public-facing pages, not the admin panel.
+function SplashGate({ onDone }) {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
+  if (isAdmin) { onDone(); return null; }
+  return <SplashScreen onDone={onDone} />;
+}
+
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
+
   return (
     <BrowserRouter>
       <AuthProvider>
+        {!splashDone && <SplashGate onDone={() => setSplashDone(true)} />}
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<HomePage />} />

@@ -40,12 +40,12 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/media',      require('./routes/media'));
-app.use('/api/carousels',  require('./routes/carousels'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/media', require('./routes/media'));
+app.use('/api/carousels', require('./routes/carousels'));
 app.use('/api/categories', require('./routes/categories'));
-app.use('/api/tags',       require('./routes/tags'));
-app.use('/api/events',     require('./routes/events'));
+app.use('/api/tags', require('./routes/tags'));
+app.use('/api/events', require('./routes/events'));
 
 app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
