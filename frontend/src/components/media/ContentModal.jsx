@@ -136,7 +136,7 @@ export default function ContentModal({ media, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/92 flex flex-col items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center p-4"
       onClick={onClose}
     >
       <div
