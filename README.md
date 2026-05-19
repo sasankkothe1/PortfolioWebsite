@@ -440,5 +440,4 @@ You fill the upload form and click Upload
   → Express inserts the URL + title + tags + category into PostgreSQL
   → Returns 201 Created to the browser
   → Dashboard refreshes showing the new photo
-
 ```
