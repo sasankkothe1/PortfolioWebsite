@@ -17,7 +17,11 @@
       "Bash(echo \"exit: $?\")",
       "Bash(curl -s http://localhost:3001/api/events/test)",
       "Bash(docker-compose up *)",
-      "Bash(docker-compose ps *)"
+      "Bash(docker-compose ps *)",
+      "Bash(npm test *)",
+      "Bash(node -e \"require\\('./tests/setup.js'\\)\")",
+      "Bash(node -e \"const j = require\\('jest'\\); console.log\\(j.version || 'no version'\\)\")",
+      "Bash(npx jest *)"
     ]
   }
 }
