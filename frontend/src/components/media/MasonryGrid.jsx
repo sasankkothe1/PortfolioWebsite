@@ -1,7 +1,7 @@
 import Masonry from 'react-masonry-css';
 import MediaCard from './MediaCard';
 
-const BREAKPOINTS = { default: 4, 1280: 4, 1024: 3, 768: 2, 480: 1 };
+const BREAKPOINTS = { default: 2 };
 
 export default function MasonryGrid({ items }) {
   if (!items.length) {
