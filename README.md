@@ -80,50 +80,208 @@ Your uploaded photos, videos, and data are preserved between restarts.
 
 ## Hosting (Deploying to the Internet)
 
-The recommended setup is:
-- **Frontend** → [Vercel](https://vercel.com) (free tier available)
-- **Backend + Database** → [Railway](https://railway.app) (free tier available)
-- **Media files** → Cloudinary (free tier available)
+Everything is free forever with this setup:
 
-### Backend on Railway
+| What | Where | Free tier |
+|---|---|---|
+| **Frontend** | [Vercel](https://vercel.com) | Unlimited |
+| **Backend** | [Render](https://render.com) | 1 web service (sleeps after 15 min idle) |
+| **Database** | [Supabase](https://supabase.com) | 500 MB, never expires |
+| **Media files** | Cloudinary | 25 GB, never expires |
 
-1. Create a new project on Railway.
-2. Add a **PostgreSQL** plugin — Railway automatically creates the database and injects `DATABASE_URL` for you.
-3. Add a new service pointing to your GitHub repo and set the **root directory** to `backend`.
-4. In the Railway dashboard, go to **Variables** and set all of these:
+> **Note on Render's free tier:** The backend "sleeps" after 15 minutes of no traffic. The first request after a quiet period takes ~30 seconds to wake up. All requests after that are instant. For a personal portfolio this is acceptable.
+
+---
+
+### Step 1 — Set up the database on Supabase
+
+1. Create a free account at [supabase.com](https://supabase.com) and create a new project
+2. Go to **Settings → SQL Editor** in the left sidebar
+3. Run each migration file below **in order** — paste the contents and click **Run**:
+
+**Migration 1** — paste the contents of `backend/db/migrations/001_init.sql`
+
+**Migration 2** — paste and run:
+```sql
+CREATE TABLE IF NOT EXISTS carousels (
+  id          SERIAL PRIMARY KEY,
+  title       VARCHAR(255),
+  category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+  tags        TEXT[] DEFAULT '{}',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE media
+  ADD COLUMN IF NOT EXISTS carousel_id    INTEGER REFERENCES carousels(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS carousel_order INTEGER DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_media_carousel ON media(carousel_id, carousel_order);
+```
+
+**Migration 3** — paste and run:
+```sql
+ALTER TABLE carousels
+  ADD COLUMN IF NOT EXISTS cover_media_id INTEGER REFERENCES media(id) ON DELETE SET NULL;
+```
+
+4. Get your connection string: **Settings → Database → Connection pooling → Session mode → copy the URI** (port `6543`)
+
+> **Important:** Use the **Session pooler** URL (port `6543`), NOT the direct connection URL. The direct URL uses IPv6 which Render cannot reach.
+
+---
+
+### Step 2 — Deploy the backend on Render
+
+1. Create a free account at [render.com](https://render.com)
+2. Click **New → Web Service**
+3. Connect your GitHub account and select the `PortfolioWebsite` repo
+4. Configure the service:
+
+| Setting | Value |
+|---|---|
+| **Root Directory** | `backend` |
+| **Runtime** | `Node` |
+| **Build Command** | `npm install` |
+| **Start Command** | `node server.js` |
+| **Instance Type** | Free |
+
+5. Under **Environment Variables**, add all of these:
 
 | Variable | Value |
 |---|---|
-| `DATABASE_URL` | Leave blank — Railway fills this in automatically from the PostgreSQL plugin |
-| `JWT_SECRET` | A long random string. Generate one by running `openssl rand -hex 32` in your terminal |
+| `DATABASE_URL` | Your Supabase Session pooler URI (port `6543`) |
+| `JWT_SECRET` | Run `openssl rand -hex 32` in your terminal and paste the result |
 | `CLOUDINARY_CLOUD_NAME` | From your Cloudinary dashboard |
 | `CLOUDINARY_API_KEY` | From your Cloudinary dashboard |
 | `CLOUDINARY_API_SECRET` | From your Cloudinary dashboard |
-| `FRONTEND_URL` | Your Vercel site URL, e.g. `https://yourname.vercel.app` (set this after deploying the frontend) |
+| `FRONTEND_URL` | Your Vercel URL — add this after Step 3 |
 | `ADMIN_USERNAME` | Your chosen admin username |
 | `ADMIN_PASSWORD` | Your chosen admin password |
 | `NODE_ENV` | `production` |
-| `PORT` | `3001` |
 
-5. After the first deploy, open the **Railway shell** and run:
-
-```bash
-node db/seeds/seed_admin.js
+6. Click **Create Web Service** — Render builds and starts the backend
+7. Check the **Logs** tab — you should see:
 ```
+Backend running on port ...
+Admin user "your-username" created automatically.
+```
+The admin user is created automatically on first start. No shell access needed.
 
-### Frontend on Vercel
+8. Copy your Render URL (e.g. `https://portfolio-backend-xxxx.onrender.com`) — you need it for the next step
 
-1. Import your GitHub repo on Vercel.
-2. Set the **root directory** to `frontend`.
-3. In Vercel's **Environment Variables** section, add:
+---
+
+### Step 3 — Deploy the frontend on Vercel
+
+1. Create a free account at [vercel.com](https://vercel.com)
+2. Click **New Project → Import Git Repository** and select `PortfolioWebsite`
+3. Set **Root Directory** to `frontend`
+4. Under **Environment Variables**, add:
 
 | Variable | Value |
 |---|---|
-| `VITE_API_URL` | Your Railway backend URL, e.g. `https://yourapp.up.railway.app` |
+| `VITE_API_URL` | Your Render backend URL, e.g. `https://portfolio-backend-xxxx.onrender.com` — no trailing slash, no `/api` |
 
-4. Deploy. Vercel handles the build automatically.
+5. Click **Deploy** — Vercel builds the frontend automatically
+6. Once deployed, copy your Vercel URL (e.g. `https://yoursite.vercel.app`)
 
-5. Go back to Railway and update `FRONTEND_URL` to match your Vercel URL.
+---
+
+### Step 4 — Link frontend and backend
+
+Go back to **Render → your backend service → Environment** and update:
+
+| Variable | Value |
+|---|---|
+| `FRONTEND_URL` | Your Vercel URL, e.g. `https://yoursite.vercel.app` |
+
+Render redeploys automatically after saving.
+
+---
+
+### How redeployment works
+
+Both Render and Vercel watch your GitHub repo. Every time you push to `master`, both services redeploy automatically — no manual steps needed.
+
+```bash
+git add -A
+git commit -m "your message"
+git push origin master
+# Render redeploys the backend, Vercel redeploys the frontend
+```
+
+---
+
+## Troubleshooting
+
+### `docker-credential-desktop: executable file not found`
+
+**When it happens:** Running `docker-compose up --build` for the first time after uninstalling Docker Desktop.
+
+**Cause:** A leftover entry in `~/.docker/config.json` still references Docker Desktop's credential helper.
+
+**Fix:**
+```bash
+# Remove the credsStore entry
+python3 -c "
+import json
+with open('/Users/$(whoami)/.docker/config.json') as f: cfg = json.load(f)
+cfg.pop('credsStore', None)
+with open('/Users/$(whoami)/.docker/config.json', 'w') as f: json.dump(cfg, f, indent='\t')
+"
+```
+Then retry `docker-compose up --build`.
+
+---
+
+### `Error loading shared library bcrypt_lib.node: Exec format error`
+
+**When it happens:** Running `docker-compose exec backend node ...` after running `npm install` locally on a Mac.
+
+**Cause:** `npm install` on your Mac compiled native packages (like `bcrypt`) for macOS. When these get copied into the Linux Docker container they are the wrong binary format.
+
+**Fix:** Add `.dockerignore` files (already present in this repo) and wipe old volumes:
+```bash
+docker-compose down -v
+docker-compose up --build
+```
+The `-v` flag removes stale volumes so Docker installs fresh Linux-compatible packages inside the container.
+
+---
+
+### `connect ENETUNREACH [IPv6 address]:5432` on Render
+
+**When it happens:** Backend on Render fails to connect to Supabase.
+
+**Cause:** The Supabase **direct connection** URL resolves to an IPv6 address. Render's free tier cannot reach IPv6 addresses.
+
+**Fix:** Use the **Session pooler** URL instead of the direct connection:
+1. In Supabase → **Settings → Database → Connection pooling**
+2. Set Mode to **Session**
+3. Copy the URI — it uses port `6543` and resolves to IPv4
+4. Update `DATABASE_URL` in Render with this URL
+
+---
+
+### `relation "users" does not exist` on Render
+
+**When it happens:** Backend starts but the admin seed fails with this error.
+
+**Cause:** The database migrations have not been run on Supabase yet — the tables don't exist.
+
+**Fix:** Run the three migration files in Supabase's SQL Editor (see **Step 1** in the Hosting section above).
+
+---
+
+### `Uncaught TypeError: Cannot read properties of undefined (reading 'length')` on Vercel
+
+**When it happens:** Public gallery page crashes immediately after opening the Vercel URL.
+
+**Cause:** `VITE_API_URL` is not set in Vercel, so API requests go to Vercel itself (which returns the HTML page), and the app tries to read `.length` on the HTML string instead of a JSON array.
+
+**Fix:** In Vercel → your project → **Settings → Environment Variables**, add:
+```
+VITE_API_URL = https://your-render-backend-url.onrender.com
+```
+Then redeploy (push a commit or click Redeploy in the Vercel dashboard).
 
 ---
 
