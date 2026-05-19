@@ -12,19 +12,13 @@ export function AuthProvider({ children }) {
       .catch(() => setUser(null));
   }, []);
 
-  const login = async (username, password) => {
-    const res = await client.post('/auth/login', { username, password });
-    setUser(res.data.user);
-    return res.data.user;
-  };
-
   const logout = async () => {
     await client.post('/auth/logout');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, logout }}>
       {children}
     </AuthContext.Provider>
   );

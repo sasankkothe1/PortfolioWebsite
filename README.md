@@ -37,8 +37,11 @@ Now open `backend/.env` in a text editor and fill in each line:
 | `CLOUDINARY_API_KEY`    | Your Cloudinary API key                                                      |
 | `CLOUDINARY_API_SECRET` | Your Cloudinary API secret                                                   |
 | `JWT_SECRET`            | Any long random string — e.g. `mysecretkey123abc456def789ghi` (min 32 chars) |
-| `ADMIN_USERNAME`        | The username you want to use to log in to `/admin`                           |
-| `ADMIN_PASSWORD`        | The password you want to use to log in to `/admin`                           |
+| `GOOGLE_CLIENT_ID`      | From Google Cloud Console (see Step 2a below)                                |
+| `GOOGLE_CLIENT_SECRET`  | From Google Cloud Console (see Step 2a below)                                |
+| `ADMIN_EMAILS`          | Your Google account email, e.g. `you@gmail.com`. Comma-separate for multiple |
+| `BACKEND_URL`           | Leave as `http://localhost:3001` for local dev                               |
+| `SESSION_SECRET`        | Any random string — used only during Google login handshake                  |
 | `FRONTEND_URL`          | Leave as `http://localhost:5173` for local dev                               |
 | `NODE_ENV`              | Leave as `development`                                                       |
 | `PORT`                  | Leave as `3001`                                                              |
@@ -51,17 +54,7 @@ docker-compose up --build
 
 This downloads and starts three things: the database, the backend server, and the frontend. The first run takes about 2 minutes. Subsequent runs are faster.
 
-### Step 4 — Create your admin user (first time only)
-
-In a second terminal window, run:
-
-```bash
-docker-compose exec backend node db/seeds/seed_admin.js
-```
-
-This reads `ADMIN_USERNAME` and `ADMIN_PASSWORD` from your `.env` file and creates your login account in the database.
-
-### Step 5 — Open the site
+### Step 4 — Open the site
 
 | URL                           | What you'll see  |
 | ----------------------------- | ---------------- |
@@ -128,9 +121,29 @@ ALTER TABLE carousels
 
 > **Important:** Use the **Session pooler** URL (port `6543`), NOT the direct connection URL. The direct URL uses IPv6 which Render cannot reach.
 
+**Migration 4** — paste and run (drops the old password-based users table):
+```sql
+DROP TABLE IF EXISTS users;
+```
+
 ---
 
-### Step 2 — Deploy the backend on Render
+### Step 2a — Set up Google OAuth (one-time)
+
+Admin login uses Google OAuth — no passwords stored anywhere.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create a new project (e.g. "Portfolio")
+2. Go to **APIs & Services → OAuth consent screen** → choose **External** → fill in your app name and save
+3. Go to **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**
+4. Application type: **Web application**
+5. Under **Authorised redirect URIs**, add both:
+   - `https://your-render-url.onrender.com/api/auth/google/callback` ← production
+   - `http://localhost:3001/api/auth/google/callback` ← local dev
+6. Click **Create** — copy the **Client ID** and **Client Secret**
+
+---
+
+### Step 2b — Deploy the backend on Render
 
 1. Create a free account at [render.com](https://render.com)
 2. Click **New → Web Service**
@@ -154,26 +167,23 @@ ALTER TABLE carousels
 | `CLOUDINARY_CLOUD_NAME` | From your Cloudinary dashboard                                   |
 | `CLOUDINARY_API_KEY`    | From your Cloudinary dashboard                                   |
 | `CLOUDINARY_API_SECRET` | From your Cloudinary dashboard                                   |
+| `GOOGLE_CLIENT_ID`      | From Google Cloud Console (Step 2a)                              |
+| `GOOGLE_CLIENT_SECRET`  | From Google Cloud Console (Step 2a)                              |
+| `ADMIN_EMAILS`          | Your Google account email, e.g. `you@gmail.com`                  |
+| `BACKEND_URL`           | Your Render URL, e.g. `https://portfolio-backend-xxxx.onrender.com` |
+| `SESSION_SECRET`        | Run `openssl rand -hex 32` and paste the result                  |
 | `FRONTEND_URL`          | Your Vercel URL — add this after Step 3                          |
-| `ADMIN_USERNAME`        | Your chosen admin username                                       |
-| `ADMIN_PASSWORD`        | Your chosen admin password                                       |
 | `NODE_ENV`              | `production`                                                     |
 
 6. Click **Create Web Service** — Render builds and starts the backend
-7. Check the **Logs** tab — you should see:
-
-```
-Backend running on port ...
-Admin user "your-username" created automatically.
-```
-
-The admin user is created automatically on first start. No shell access needed.
-
-8. Copy your Render URL (e.g. `https://portfolio-backend-xxxx.onrender.com`) — you need it for the next step
+7. Check the **Logs** tab — you should see `Backend running on port ...`
+8. Copy your Render URL (e.g. `https://portfolio-backend-xxxx.onrender.com`) — you need it for the next step and for Step 2a's redirect URI
 
 ---
 
 ### Step 3 — Deploy the frontend on Vercel
+
+> Go back to Step 2a and add your Render URL to the **Authorised redirect URIs** in Google Cloud Console before proceeding.
 
 1. Create a free account at [vercel.com](https://vercel.com)
 2. Click **New Project → Import Git Repository** and select `PortfolioWebsite`
