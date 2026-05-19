@@ -1,53 +1,52 @@
-const bcrypt = require('bcrypt');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const jwt = require('jsonwebtoken');
-const pool = require('../db/pool');
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  maxAge: 7 * 24 * 3600 * 1000,
-};
+const allowedEmails = (process.env.ADMIN_EMAILS || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
+passport.use(new GoogleStrategy({
+  clientID:    process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: `${process.env.BACKEND_URL}/api/auth/google/callback`,
+}, (accessToken, refreshToken, profile, done) => {
+  const email = profile.emails?.[0]?.value?.toLowerCase();
+  if (!email || !allowedEmails.includes(email)) return done(null, false);
+  done(null, { email, name: profile.displayName });
+}));
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
 
 function cookieOptions() {
-  if (process.env.NODE_ENV === 'production') {
-    return { ...COOKIE_OPTIONS, secure: true, sameSite: 'none' };
-  }
-  return { ...COOKIE_OPTIONS, sameSite: 'strict' };
+  return process.env.NODE_ENV === 'production'
+    ? { httpOnly: true, secure: true, sameSite: 'none', maxAge: 7 * 24 * 3600 * 1000 }
+    : { httpOnly: true, sameSite: 'strict', maxAge: 7 * 24 * 3600 * 1000 };
 }
 
-async function login(req, res, next) {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
-    }
-
-    const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    const user = rows[0];
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-
-    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, {
-      expiresIn: '7d',
-    });
-
-    res.cookie('token', token, cookieOptions());
-    res.json({ user: { id: user.id, username: user.username } });
-  } catch (err) {
-    next(err);
-  }
+function handleCallback(req, res) {
+  const token = jwt.sign(
+    { email: req.user.email, name: req.user.name },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+  res.cookie('token', token, cookieOptions());
+  req.session.destroy(() => {
+    res.redirect(`${process.env.FRONTEND_URL}/admin/dashboard`);
+  });
 }
 
-async function logout(req, res) {
+function logout(req, res) {
   const opts = cookieOptions();
   delete opts.maxAge;
   res.clearCookie('token', opts);
   res.json({ message: 'Logged out' });
 }
 
-async function me(req, res) {
+function me(req, res) {
   res.json(req.user);
 }
 
-module.exports = { login, logout, me };
+module.exports = { handleCallback, logout, me };

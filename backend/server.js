@@ -2,26 +2,43 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const passport = require('passport');
+
+// Registers the Google OAuth strategy on passport.
+require('./controllers/authController');
 
 const app = express();
 
-// Accept multiple allowed origins from FRONTEND_URL (comma-separated).
-// Trailing slashes are stripped so https://example.com/ and https://example.com both work.
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map(o => o.trim().replace(/\/$/, ''));
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (curl, Postman, server-to-server).
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
 }));
+
 app.use(express.json());
 app.use(cookieParser());
+
+// express-session is only used during the OAuth handshake (10 min TTL).
+// After the callback the session is destroyed and the JWT cookie takes over.
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 10 * 60 * 1000,
+  },
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/media',      require('./routes/media'));
@@ -44,23 +61,5 @@ process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection:', reason);
 });
 
-async function seedAdminIfNeeded() {
-  const pool = require('./db/pool');
-  const bcrypt = require('bcrypt');
-  const { rows } = await pool.query('SELECT 1 FROM users LIMIT 1');
-  if (rows.length > 0) return; // admin already exists
-  const { ADMIN_USERNAME, ADMIN_PASSWORD } = process.env;
-  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) return;
-  const hash = await bcrypt.hash(ADMIN_PASSWORD, 12);
-  await pool.query(
-    'INSERT INTO users (username, password_hash) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-    [ADMIN_USERNAME, hash]
-  );
-  console.log(`Admin user "${ADMIN_USERNAME}" created automatically.`);
-}
-
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, async () => {
-  console.log(`Backend running on port ${PORT}`);
-  await seedAdminIfNeeded().catch(err => console.error('Admin seed error:', err));
-});
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
